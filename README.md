@@ -32,3 +32,4 @@ artifacts that have the same SHA256 . Otherwise all builds are marked as failed.
 
 7. The CLI recognises environments and can link different libraries or files for each environment. This aims to solve
 the `configuration` problem and make it possible to inject configurations using the underlying language.
+
