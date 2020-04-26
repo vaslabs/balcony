@@ -26,9 +26,7 @@ Merge strategy is concatenation which means build history for the same code vers
 
 5. The CLI allows incremental builds given that rules have been specified on how to reuse artifacts from previous builds.
 
-6. Artifacts generated from successful builds on any code state A must be indistinguishable and this is enforced.
-For example if code is on commit afe123 and build 0cafed and 1caded were executed and were successful , should generate
-artifacts that have the same SHA256 . Otherwise all builds are marked as failed.
+6. Artifacts generated from successful builds on any code state A must be indistinguishable and this must be enforced.
 
 7. The CLI recognises environments and can link different libraries or files for each environment. This aims to solve
 the `configuration` problem and make it possible to inject configurations using the underlying language.
