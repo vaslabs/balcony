@@ -11,8 +11,8 @@ case class Code(commit: Hash, builds: Map[Environment, Build])
 case class Build(user: User, outcome: BuildOutcome, artifacts: Set[Artifact], buildCommit: Hash)
 
 sealed trait Artifact
-case class LocalArtifact(location: URI)
-case class RemoteArtifact(location: URI, credentials: Option[Credentials])
+case class LocalArtifact(location: URI) extends Artifact
+case class RemoteArtifact(location: URI, credentials: Option[Credentials]) extends Artifact
 
 case class Environment(identifier: String)
 ```
