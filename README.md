@@ -8,7 +8,7 @@ Balcony is an all in one CLI tool for CI/CD integration tightly coupled with the
 
 ```scala
 case class Code(commit: Hash, builds: Map[Environment, Build])
-case class Build(user: User, outcome: BuildOutcome, artifacts: Set[Artifact], buildCommit: Hash)
+case class Build(user: User, outcome: BuildOutcome, artifacts: Set[Artifact], buildCommit: Hash, machine: MacAddress)
 
 sealed trait Artifact
 case class LocalArtifact(location: URI) extends Artifact
