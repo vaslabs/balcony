@@ -18,7 +18,7 @@ case class Environment(identifier: String)
 ```
 
 2. Build history maintains distribution given that merge conflicts of builds should be extremely rare.
-Merge strategy is concatenation which means builds will be unordered.
+Merge strategy is concatenation which means build history for the same code version will be unordered.
 
 3. The build history is as portable as the rest of the code that uses GIT as the SCM.
 
