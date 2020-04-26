@@ -1,6 +1,6 @@
 # Balcony
 
-Balcony is an all in one CLI tool for CI/CD integration tightly coupled with the codebase.
+Balcony aims to be an all in one CLI tool for CI/CD integration tightly coupled with the codebase.
 
 ## Goals
 
