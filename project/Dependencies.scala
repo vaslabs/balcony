@@ -25,7 +25,7 @@ object Dependencies {
 
   object Module {
     import Library._
-    val protocol = Seq(cats.core, cats.laws, scalatest, scalacheck)
+    val protocol = Seq(cats.core, cats.laws, cats.effect, scalatest, scalacheck)
     val database = Seq(jgit, scalatest, scalacheck, cats.effect)
   }
 }

@@ -12,16 +12,22 @@ case class Build(
 object Build {
   sealed trait Result
   case object Success extends Result
-  case object Failure extends Result
+  case class Failure(errorCode: Int) extends Result
 }
 
-case class CodeCommit(value: Commit)
+case class CodeCommit(value: Commit) {
+  def show: String = value.show
+}
 
-case class Commit(value: Hash)
-case class Hash(value: String)
+case class Commit(value: Hash) {
+  def show: String = value.show
+}
+case class Hash(value: String) {
+  def show: String = value
+}
 
 case class BuildScript(
-  location: URI,
+  location: Path,
   name: String,
   reference: Hash,
   environment: Environment
@@ -34,10 +40,13 @@ case class RemoteArtifact(
   location: URI
 ) extends Artifact
 
-case class BuildOutput(
+sealed trait BuildOutput
+
+case class BuildArtifacs(
   reference: Hash,
   artifact: Artifact
-)
+) extends BuildOutput
+case object NoOutput extends BuildOutput
 
 case class Environment(reference: Hash)
 
