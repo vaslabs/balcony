@@ -3,7 +3,7 @@ import sbt._
 object Dependencies {
 
   object Version {
-    val jgit = "v5.7.0.202003110725-r"
+    val jgit = "5.7.0.202003110725-r"
     val scalatest = "3.1.1"
     val scalacheck = "1.14.1"
     object cats {
