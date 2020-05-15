@@ -57,5 +57,5 @@ object RuntimeDependencies {
     name <- Gen.alphaNumStr
     reference <- Gen.alphaNumStr.map(Hash.apply)
     environment <- Gen.alphaNumStr.map(Environment.apply)
-  } yield BuildScript(new File(location).toPath, name, reference, environment)
+  } yield BuildScript(location, name, reference, environment)
 }

@@ -12,21 +12,25 @@ import scala.sys.process.Process
 object BuildProcess {
 
   def build(
+    repoLocation: String,
     codeCommit: CodeCommit,
     buildScript: BuildScript,
     commitBuild: Path => IO[Hash],
     summariseOutput: IO[BuildOutput]
   ): IO[EnvironmentBuild] = {
-    val buildIO = processExecute(buildScript.location, codeCommit, commitBuild)
+    val buildIO = processExecute(
+      repoLocation,
+      new File(buildScript.location).toPath, codeCommit, commitBuild
+    )
     for {
       build <- buildIO
       buildOutput <- summariseOutput
     } yield EnvironmentBuild(build, buildOutput, buildScript.environment, buildScript.reference)
   }
 
-  private def processExecute(path: Path, codeCommit: CodeCommit, commitBuild: Path => IO[Hash]): IO[Build] = {
+  private def processExecute(repoLocation: String, path: Path, codeCommit: CodeCommit, commitBuild: Path => IO[Hash]): IO[Build] = {
     for {
-      out <- IO.delay(outputStream(codeCommit))
+      out <- IO.delay(outputStream(codeCommit, repoLocation))
       path = out._1
       outputStream = out._2
       process = Process.apply(path.toFile) #> outputStream #> System.out
@@ -35,8 +39,8 @@ object BuildProcess {
     } yield Build(codeCommit, buildCommit, parseOutcome(exitValue))
   }
 
-  private def outputStream(codeCommit: CodeCommit): (Path, OutputStream) = {
-    val outputFile = Files.createFile(new File(codeCommit.show).toPath)
+  private def outputStream(codeCommit: CodeCommit, repoLocation: String): (Path, OutputStream) = {
+    val outputFile = Files.createFile(new File(s"${repoLocation}/${codeCommit.show}").toPath)
     val outputStream = new FileOutputStream(outputFile.toFile)
     (outputFile, outputStream)
   }

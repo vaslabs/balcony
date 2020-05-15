@@ -1,7 +1,6 @@
 package balcony.model
 
 import java.net.URI
-import java.nio.file.Path
 
 case class Build(
   codeCommit: CodeCommit,
@@ -30,14 +29,14 @@ case class Hash(value: String) {
 }
 
 case class BuildScript(
-  location: Path,
+  location: String,
   name: String,
   reference: Hash,
   environment: Environment
 )
 
 sealed trait Artifact
-case class LocalArtifact(location: Path) extends Artifact
+case class LocalArtifact(location: String) extends Artifact
 
 case class RemoteArtifact(
   location: URI
