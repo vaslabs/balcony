@@ -14,7 +14,6 @@ object BuildProcess {
   def build(
     codeCommit: CodeCommit,
     buildScript: BuildScript,
-    environment: Environment,
     commitBuild: Path => IO[Hash],
     summariseOutput: IO[BuildOutput]
   ): IO[EnvironmentBuild] = {
@@ -22,7 +21,7 @@ object BuildProcess {
     for {
       build <- buildIO
       buildOutput <- summariseOutput
-    } yield EnvironmentBuild(build, buildOutput, environment, buildScript.reference)
+    } yield EnvironmentBuild(build, buildOutput, buildScript.environment, buildScript.reference)
   }
 
   private def processExecute(path: Path, codeCommit: CodeCommit, commitBuild: Path => IO[Hash]): IO[Build] = {

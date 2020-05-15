@@ -22,6 +22,9 @@ case class CodeCommit(value: Commit) {
 case class Commit(value: Hash) {
   def show: String = value.show
 }
+object Commit {
+  def fromString(value: String): Commit = Commit(Hash(value))
+}
 case class Hash(value: String) {
   def show: String = value
 }
@@ -48,7 +51,7 @@ case class BuildArtifacs(
 ) extends BuildOutput
 case object NoOutput extends BuildOutput
 
-case class Environment(reference: Hash)
+case class Environment(reference: String)
 
 case class EnvironmentBuild(
   build: Build,
