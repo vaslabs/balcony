@@ -14,12 +14,11 @@ class SetupSpec extends Properties("ci-tracking-setup") {
       .unsafeRunSync()
 
     val allBuilds = ciConfiguration.listBuilds().unsafeRunSync()
-
-    allBuilds == List(
-      BuildConfiguration(
-        buildScriptSetup.name, Commit(buildHash)
+    val expected = BuildConfiguration(
+        buildScriptSetup.name, Commit(buildHash),
       )
-    )
+
+    allBuilds.contains(expected)
   }
 
 }

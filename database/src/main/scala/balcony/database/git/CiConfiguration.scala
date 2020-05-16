@@ -35,7 +35,7 @@ class CiConfiguration private (git: Git) {
         Files.write(
           path,
           lines.asJava,
-          StandardOpenOption.CREATE_NEW, StandardOpenOption.WRITE
+          StandardOpenOption.CREATE, StandardOpenOption.WRITE, StandardOpenOption.TRUNCATE_EXISTING
         )
         Files.setPosixFilePermissions(path, Set(
           PosixFilePermission.OWNER_EXECUTE,
@@ -67,10 +67,13 @@ object CiConfiguration {
 
   private def createDirs(git: Git): IO[Unit] = openCiTracker(false, false)(git).use( _ =>
     IO{
-      Files.createDirectories(absoluteFilePath(".builds")(git))
-      Files.createFile(absoluteFilePath(".builds/.gitkeep")(git))
-      git.add().addFilepattern(".builds").call()
-      git.commit().setMessage("Ci configuration: initial commit").call()
+      val gitkeep = absoluteFilePath(".builds/.gitkeep")(git)
+      if (!gitkeep.toFile.exists()) {
+        Files.createDirectories(absoluteFilePath(".builds")(git))
+        Files.createFile(gitkeep)
+        git.add().addFilepattern(".builds").call()
+        git.commit().setMessage("Ci configuration: initial commit").call()
+      }
     } *> IO.unit
   )
 

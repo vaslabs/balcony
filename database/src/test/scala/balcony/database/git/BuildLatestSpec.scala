@@ -10,16 +10,19 @@ class BuildLatestSpec extends Properties("storage") {
    property("run-build-on-last-commit") = Prop.forAll(RuntimeDependencies.gen) { runtimeDependencies: RuntimeDependencies =>
      val ciTracker = CiTracker.create(runtimeDependencies.git)
      val environmentBuildIO = ciTracker.apply(
-       Command.BuildLatestCommit(runtimeDependencies.buildScript)
+       Command.BuildLatestCommit(runtimeDependencies.buildScript.name, runtimeDependencies.buildScript.environment)
      )
-     val build = environmentBuildIO.unsafeRunSync().build
+     val build = environmentBuildIO
+       .handleErrorWith(t => IO(t.printStackTrace()) *> IO.raiseError(t))
+       .unsafeRunSync().build
 
      val commandCondition = build.codeCommit.value == runtimeDependencies.commits.last
 
      val latestBuild: IO[EnvironmentBuild] = ciTracker.apply(Query.LatestBuild()).handleErrorWith(
        t => IO(t.printStackTrace()) *> IO.raiseError(t)
      )
-     val execution = latestBuild.unsafeRunSync()
+     val execution = latestBuild.handleErrorWith(t => IO(t.printStackTrace()) *> IO.raiseError(t))
+       .unsafeRunSync()
      val queryCondition = execution.build == build
 
      commandCondition && queryCondition
@@ -28,7 +31,10 @@ class BuildLatestSpec extends Properties("storage") {
   property("recover-logs-of-last-build") = Prop.forAll(RuntimeDependencies.gen.withBuildScript) {
     runtimeDependencies: RuntimeDependencies =>
       val ciTracker = CiTracker.create(runtimeDependencies.git)
-      ciTracker.apply(Command.BuildLatestCommit(runtimeDependencies.buildScript)).handleErrorWith {
+      ciTracker.apply(Command.BuildLatestCommit(
+          runtimeDependencies.buildScript.name,
+        runtimeDependencies.buildScript.environment
+      )).handleErrorWith {
         t => IO(t.printStackTrace()) *> IO.raiseError(t)
       }.unsafeRunSync()
 

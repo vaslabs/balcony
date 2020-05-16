@@ -6,13 +6,11 @@ import java.nio.ByteBuffer
 
 import balcony.database.git.CiTracker.MetaData
 import balcony.database.git.CiTracker.MetaQuery.LatestLogs
-import balcony.model.{BuildScript, CodeCommit, Commit, EnvironmentBuild, Hash, NoOutput}
+import balcony.model.{BuildScript, CodeCommit, Commit, Environment, EnvironmentBuild, Hash, NoOutput}
 import balcony.protocol.BuildProcess
-import cats.effect.{IO, Resource}
+import cats.effect.IO
 import org.eclipse.jgit.api.Git
 import balcony.database.json.circe._
-import org.eclipse.jgit.api.CreateBranchCommand.SetupUpstreamMode
-import org.eclipse.jgit.api.ListBranchCommand.ListMode
 
 import scala.jdk.CollectionConverters._
 
@@ -22,15 +20,19 @@ class CiTracker private(git: Git) {
 
   def apply(command: CiTracker.Command): IO[EnvironmentBuild] = for {
     codeCommit <- codeCommitIO
-    _ <- CiConfiguration.checkBranch(git)
-    envBuild <- CiConfiguration.openCiTracker(false, false)(git).use(_ =>
-        BuildProcess.build(
-          repoLocation.getAbsolutePath,
-          codeCommit,
-          command.buildScript,
-          _ => commitLog,
-          IO.pure(NoOutput)
+    envBuild <-
+      CiConfiguration.openCiTracker(false, false)(git).use(_ =>
+        findBuild(command.buildName, command.environment).flatMap(buildScript =>
+          IO.fromOption(buildScript)(new RuntimeException(s"Missing build ${command.buildName}")).flatMap(buildScript =>
+            BuildProcess.build(
+            repoLocation.getAbsolutePath,
+            codeCommit,
+            buildScript,
+            _ => commitLog,
+            IO.pure(NoOutput)
+          )
         )
+      )
     )
     _ <- persist(envBuild)
   } yield envBuild
@@ -88,13 +90,22 @@ class CiTracker private(git: Git) {
         StandardOpenOption.WRITE, StandardOpenOption.CREATE_NEW
       )
     } *> IO.unit
+
+  private def findBuild(buildName: String, environment: Environment): IO[Option[BuildScript]] = IO {
+    val location = s".builds/$buildName"
+    val buildRef = git.log().addPath(location).call().asScala.headOption
+    buildRef.map(buildRef =>
+      BuildScript(location, buildName, Hash(buildRef.toObjectId.name()), environment)
+    )
+  }
 }
 
 object CiTracker {
   def create(git: Git): CiTracker = new CiTracker(git)
 
   sealed trait Command {
-    def buildScript: BuildScript
+    def buildName: String
+    def environment: Environment
   }
 
   sealed trait Query
@@ -103,7 +114,7 @@ object CiTracker {
   case class MetaData[A](data: A)
 
   object Command {
-    case class BuildLatestCommit(buildScript: BuildScript) extends Command
+    case class BuildLatestCommit(buildName: String, environment: Environment) extends Command
   }
 
   object Query {

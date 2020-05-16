@@ -2,7 +2,7 @@ name := "balcony"
 
 version := "0.1"
 
-scalaVersion := "2.13.2"
+scalaVersion in ThisBuild := "2.13.2"
 
 
 lazy val balcony = (project in file("."))
@@ -11,6 +11,7 @@ lazy val balcony = (project in file("."))
 
 lazy val `balcony-cli` = (project in file("balcony-cli"))
   .settings(commonSettings)
+  .settings(libraryDependencies ++= Dependencies.Module.cli)
   .dependsOn(database)
 
 lazy val database = (project in file("database"))

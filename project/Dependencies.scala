@@ -18,6 +18,8 @@ object Dependencies {
       }
 
     }
+
+    val decline = "1.0.0"
   }
 
   object Library {
@@ -44,11 +46,16 @@ object Dependencies {
         ).map(_ % Version.circe.cbor.bullet)
       }
     }
+    object decline {
+      val core = "com.monovore" %% "decline" % Version.decline
+      val catsEffect = "com.monovore" %% "decline-effect" % Version.decline
+    }
   }
 
   object Module {
     import Library._
     val protocol = Seq(cats.core, cats.laws, cats.effect, scalatest, scalacheck)
     val database = Seq(jgit, scalatest, scalacheck, cats.effect) ++ circe.all ++ circe.cbor.essentials
+    val cli = Seq(decline.core, decline.catsEffect)
   }
 }

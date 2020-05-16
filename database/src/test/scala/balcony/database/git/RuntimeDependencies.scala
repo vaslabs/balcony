@@ -36,7 +36,7 @@ object RuntimeDependencies {
     fileSystem = files.lazyZip(content).toMap
     git = IO(Git.init().setDirectory(path.toFile).call()).unsafeRunSync()
     commits = initialiseRepo(git, fileSystem).unsafeRunSync()
-    buildScript <- buildScriptGen
+    buildScript <- buildScriptGen(git)
   } yield RuntimeDependencies(git, path, commits, buildScript, List.empty)
 
   private def initialiseRepo(git: Git, fileSystem: Map[File, String]): IO[List[Commit]] = IO.suspend(
@@ -59,60 +59,39 @@ object RuntimeDependencies {
     )
   }
 
-  private def buildScriptGen: Gen[BuildScript] = for {
-    location <- Gen.alphaNumStr
-    name <- Gen.alphaNumStr
+  private def buildScriptGen(git: Git): Gen[BuildScript] = for {
+    name <- Gen.nonEmptyListOf(Gen.alphaNumChar).map(_.mkString)
     reference <- Gen.alphaNumStr.map(Hash.apply)
     environment <- Gen.alphaNumStr.map(Environment.apply)
-  } yield BuildScript(location, name, reference, environment)
+    _ = generateBuildFile(git, name, List("hello")).unsafeRunSync()
+  } yield BuildScript(s".builds/$name", name, reference, environment)
 
   implicit final class RuntimeDependenciesOps(val gen: Gen[RuntimeDependencies]) extends AnyVal {
     def withBuildScript: Gen[RuntimeDependencies] = for {
       runtimeDeps <- gen
-      messages <- Gen.nonEmptyListOf(Gen.asciiPrintableStr.map(_.filterNot(_ == '\'')))
+      messages <- Gen.nonEmptyListOf(Gen.asciiPrintableStr.map(_.filterNot(_ == '\'').filterNot(_ == '\\')))
       buildScript <- genBuildScript(runtimeDeps, messages)
     } yield runtimeDeps.copy(buildScript = buildScript, buildLog = messages)
   }
 
   private def genBuildScript(runtimeDependencies: RuntimeDependencies, messages: List[String]): Gen[BuildScript] = {
-    val buildHash = generateBuildFile(runtimeDependencies.git, messages).unsafeRunSync()
-    BuildScript("build_echo.sh", "build", buildHash, runtimeDependencies.buildScript.environment)
+    val buildHash = generateBuildFile(
+      runtimeDependencies.git,
+      runtimeDependencies.buildScript.name,
+      messages
+    ).unsafeRunSync()
+    BuildScript(
+      s".builds/${runtimeDependencies.buildScript.name}",
+      runtimeDependencies.buildScript.name,
+      buildHash,
+      runtimeDependencies.buildScript.environment
+    )
   }
 
-  private def generateBuildFile(git: Git, messages: List[String]): IO[Hash] = {
-    val ciTracker = CiTracker.create(git)
+  private def generateBuildFile(git: Git, buildName: String, messages: List[String]): IO[Hash] = {
     val script = "#!/bin/bash" +: messages.map(msg => s"echo '${msg}'")
-
-    CiConfiguration
-      .openCiTracker(true, true)(git)
-      .use(_ =>
-        IO {
-          val location = s"${ciTracker.repoLocation.getAbsolutePath}/build_echo.sh"
-          val file = new File(location).toPath
-          Files.write(
-            file,
-            script.asJava,
-            StandardOpenOption.CREATE_NEW, StandardOpenOption.WRITE
-          )
-          Files.setPosixFilePermissions(file, Set(
-            PosixFilePermission.OWNER_EXECUTE,
-            PosixFilePermission.OWNER_READ,
-            PosixFilePermission.OWNER_WRITE,
-            PosixFilePermission.GROUP_READ,
-            PosixFilePermission.OTHERS_READ).asJava)
-          git.add().addFilepattern("build_echo.sh").call()
-          Hash(
-            git
-              .commit()
-              .setMessage("Added build file")
-              .setAuthor("Balcony", "balcony@vaslabs.io")
-              .call()
-              .toObjectId
-              .name()
-          )
-        }.handleErrorWith(t => IO(t.printStackTrace()) *> IO.raiseError(t))
-      )
-
+    val ciConfiguration = CiConfiguration.setUp(git)
+    ciConfiguration.flatMap(_.writeBuild(buildName, script))
   }
 }
 
@@ -121,6 +100,6 @@ case class BuildScriptSetup(name: String, lines: List[String])
 object BuildScriptSetup {
   def gen: Gen[BuildScriptSetup] = for {
     name <- Gen.nonEmptyListOf(Gen.alphaNumChar).map(_.mkString)
-    commands <- Gen.listOf(Gen.asciiPrintableStr.map(_.filterNot(_ == '\'')))
+    commands <- Gen.listOf(Gen.asciiPrintableStr.map(_.filterNot(_ == '\'').filterNot(_ == '\\')))
   } yield BuildScriptSetup(name, commands)
 }
