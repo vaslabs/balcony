@@ -83,8 +83,8 @@ object RuntimeDependencies {
     val ciTracker = CiTracker.create(git)
     val script = "#!/bin/bash" +: messages.map(msg => s"echo '${msg}'")
 
-    ciTracker
-      .openCiTracker(true, true)
+    CiConfiguration
+      .openCiTracker(true, true)(git)
       .use(_ =>
         IO {
           val location = s"${ciTracker.repoLocation.getAbsolutePath}/build_echo.sh"
@@ -114,4 +114,13 @@ object RuntimeDependencies {
       )
 
   }
+}
+
+case class BuildScriptSetup(name: String, lines: List[String])
+
+object BuildScriptSetup {
+  def gen: Gen[BuildScriptSetup] = for {
+    name <- Gen.nonEmptyListOf(Gen.alphaNumChar).map(_.mkString)
+    commands <- Gen.listOf(Gen.asciiPrintableStr.map(_.filterNot(_ == '\'')))
+  } yield BuildScriptSetup(name, commands)
 }

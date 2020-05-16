@@ -22,8 +22,8 @@ class CiTracker private(git: Git) {
 
   def apply(command: CiTracker.Command): IO[EnvironmentBuild] = for {
     codeCommit <- codeCommitIO
-    _ <- checkBranch
-    envBuild <- openCiTracker(false, false).use(_ =>
+    _ <- CiConfiguration.checkBranch(git)
+    envBuild <- CiConfiguration.openCiTracker(false, false)(git).use(_ =>
         BuildProcess.build(
           repoLocation.getAbsolutePath,
           codeCommit,
@@ -36,12 +36,12 @@ class CiTracker private(git: Git) {
   } yield envBuild
 
   def apply(query: CiTracker.Query): IO[EnvironmentBuild] =
-    openCiTracker(false, false).use(_ => readLatest())
+    CiConfiguration.openCiTracker(false, false)(git).use(_ => readLatest())
 
   def apply(metaQuery: CiTracker.MetaQuery[List[String]]): IO[MetaData[List[String]]] =
     metaQuery match {
       case LatestLogs() =>
-        openCiTracker(false, false) use (_ => readLatestLogs())
+        CiConfiguration.openCiTracker(false, false)(git) use (_ => readLatestLogs())
     }
 
   private def commitLog(): IO[Hash] = IO {
@@ -54,35 +54,9 @@ class CiTracker private(git: Git) {
     )
   )
 
-  private def checkBranch: IO[Unit] =
-  IO(
-    git.branchList().setListMode(ListMode.ALL).call().asScala
-      .find(_.getName == s"refs/heads/${CiTracker.Branch}")
-  ).flatMap(
-    _.fold(openCiTracker(true, true).use(_ => IO.unit))(
-      _ => IO.unit
-    )
-  )
-
   private def codeCommitIO: IO[CodeCommit] = IO(
     CodeCommit(Commit.fromString(git.log().call().asScala.head.toObjectId.name()))
   )
-
-
-  private[git] def openCiTracker(createBranch: Boolean, orphan: Boolean) = {
-    Resource.make(
-      IO(git.getRepository.getFullBranch).flatMap( branchName =>
-        IO(
-          git.checkout()
-           .setOrphan(orphan)
-           .setCreateBranch(createBranch)
-           .setUpstreamMode(SetupUpstreamMode.SET_UPSTREAM)
-           .setName(CiTracker.Branch).call()
-        ) *> IO.pure(branchName)
-    ))(prevBranch =>
-      IO(git.checkout().setName(prevBranch).call()) *>  IO.unit
-    )
-  }
 
   private def readLatest(): IO[EnvironmentBuild] =
     IO {
@@ -99,7 +73,7 @@ class CiTracker private(git: Git) {
     } yield MetaData(content)
 
   private def persist(build: EnvironmentBuild): IO[Unit] =
-    openCiTracker(false, false).use(_ =>
+    CiConfiguration.openCiTracker(false, false)(git).use(_ =>
       writeEnvironmentBuild(build) *> IO {
         git.add().addFilepattern(".").call()
         git.commit().setMessage(s"Finished build ${build.toString}").call()

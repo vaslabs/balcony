@@ -14,6 +14,8 @@ object Build {
   case class Failure(errorCode: Int) extends Result
 }
 
+case class BuildConfiguration(name: String, commit: Commit)
+
 case class CodeCommit(value: Commit) {
   def show: String = value.show
 }
