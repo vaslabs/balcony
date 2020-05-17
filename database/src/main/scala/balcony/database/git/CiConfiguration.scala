@@ -42,7 +42,8 @@ class CiConfiguration private (git: Git) {
           PosixFilePermission.OWNER_READ,
           PosixFilePermission.OWNER_WRITE,
           PosixFilePermission.GROUP_READ,
-          PosixFilePermission.OTHERS_READ).asJava)
+          PosixFilePermission.OTHERS_READ).asJava
+        )
         git.add().addFilepattern(targetLocation).call()
         Hash(
           git
