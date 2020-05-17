@@ -3,7 +3,7 @@ package balcony.cli
 import java.io.File
 
 import balcony.database.git.CiTracker.Command.BuildLatestCommit
-import balcony.database.git.CiTracker.{MetaQuery, Query}
+import balcony.database.git.CiTracker.{MetaData, MetaQuery, Query}
 import balcony.database.git.{CiConfiguration, CiTracker}
 import balcony.model.{Environment, EnvironmentBuild, Hash}
 import cats.Show
@@ -39,13 +39,13 @@ object Main extends CommandIOApp(
     case RunBuild(name, environment) =>
       CiTracker.create(Git.open(new File(".")))
         .apply(BuildLatestCommit(name, environment))
-        .flatMap(report) *> IO(ExitCode.Success)
+        .flatMap(report(_)) *> IO(ExitCode.Success)
 
 
     case DisplayLogs =>
       CiTracker.create(Git.open(new File(".")))
         .apply(MetaQuery.LatestLogs())
-        .flatMap(report) *> IO(ExitCode.Success)
+        .flatMap(report(_)) *> IO(ExitCode.Success)
   }
 
   private def readFromStdin[A](andThen: LazyList[String] => IO[A]): IO[A] =
@@ -69,6 +69,8 @@ object Main extends CommandIOApp(
 object Report {
   implicit val showHash: Show[Hash] = (h: Hash) => h.show
   implicit val showEnvironmentBuild: Show[EnvironmentBuild] = Show.fromToString
+
+  implicit val showMetaDataLogs: Show[MetaData[List[String]]] = m => m.data.mkString("\n")
 }
 
 object  BalconyOpts {
@@ -97,6 +99,8 @@ object  BalconyOpts {
     ).mapN(RunBuild)
   }
 
-  val logBuild = Opts.subcommand("logs", "Display the logs from the latest build").map(_ => DisplayLogs)
+  val logBuild = Opts.subcommand("logs", "Display the logs from the latest build") {
+    Opts.unit
+  }.map(_ => DisplayLogs)
 
 }
