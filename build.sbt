@@ -7,10 +7,12 @@ scalaVersion in ThisBuild := "2.13.2"
 
 lazy val balcony = (project in file("."))
   .settings(commonSettings)
-  .aggregate(database, protocol, model)
+  .aggregate(database, protocol, model, `balcony-cli`)
 
 lazy val `balcony-cli` = (project in file("balcony-cli"))
+  .enablePlugins(JavaAppPackaging, RpmPlugin)
   .settings(commonSettings)
+  .settings(rpmSettings)
   .settings(libraryDependencies ++= Dependencies.Module.cli)
   .dependsOn(database)
 
@@ -29,4 +31,16 @@ lazy val model = (project in file("model"))
 
 lazy val commonSettings = Seq(
   scalaVersion in ThisBuild := "2.13.2"
+)
+
+
+lazy val rpmSettings = Seq(
+  rpmVendor := "vaslabs.io",
+  version in Rpm := version.value,
+  rpmRelease := "1",
+  packageSummary in Rpm := "Portable CI/CD solution",
+  packageDescription in Rpm := "Control CI/CD within your project's source code under GIT",
+  maintainerScripts in Rpm := Map.empty,
+  rpmLicense := Some("Apache License 2.0")
+
 )

@@ -28,7 +28,7 @@ class CiConfiguration private (git: Git) {
         }
       )
 
-  def writeBuild(name: String, lines: List[String]): IO[Hash] =
+  def writeBuild(name: String, lines: Seq[String]): IO[Hash] =
       CiConfiguration.openCiTracker(false, false)(git).use(_ => IO {
         val targetLocation = s".builds/$name"
         val path = CiConfiguration.absoluteFilePath(targetLocation)(git)
@@ -64,6 +64,10 @@ object CiConfiguration {
 
   def setUp(git: Git): IO[CiConfiguration] = checkBranch(git)
     .flatMap(_ => createDirs(git).map(_ => new CiConfiguration(git)))
+
+  def create(dir: File): IO[CiConfiguration] = IO {
+    Git.open(dir)
+  }.flatMap(setUp)
 
   private def createDirs(git: Git): IO[Unit] = openCiTracker(false, false)(git).use( _ =>
     IO{
