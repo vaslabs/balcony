@@ -102,7 +102,7 @@ class CiTracker private(git: Git) {
       Files.write(
         new File(s"${repoLocation.getAbsolutePath}/${CiTracker.FileNames.Latest}").toPath,
         Codecs.encode(build).array(),
-        StandardOpenOption.WRITE, StandardOpenOption.CREATE_NEW
+        StandardOpenOption.WRITE, StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING
       )
     } *> IO.unit
 
