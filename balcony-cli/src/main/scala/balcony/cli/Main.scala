@@ -22,7 +22,7 @@ object Main extends CommandIOApp(
 ) {
   import BalconyOpts._
   import Report._
-  override def main: Opts[IO[ExitCode]] = (setupCommand orElse defineBuildCommand orElse runBuildCommand).map {
+  override def main: Opts[IO[ExitCode]] = (setupCommand orElse defineBuildCommand orElse runBuildCommand orElse logBuild).map {
     case Setup(location) =>
       CiConfiguration.setUp(new File(location).toPath) *>
         IO(ExitCode.Success)
