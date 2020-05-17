@@ -3,6 +3,7 @@ package balcony.cli
 import java.io.File
 
 import balcony.database.git.CiTracker.Command.BuildLatestCommit
+import balcony.database.git.CiTracker.{MetaQuery, Query}
 import balcony.database.git.{CiConfiguration, CiTracker}
 import balcony.model.{Environment, EnvironmentBuild, Hash}
 import cats.Show
@@ -23,7 +24,7 @@ object Main extends CommandIOApp(
   import Report._
   override def main: Opts[IO[ExitCode]] = (setupCommand orElse defineBuildCommand orElse runBuildCommand).map {
     case Setup(location) =>
-      CiConfiguration.setUp(new File(location).toPath).handleErrorWith(_ => IO(ExitCode.Error)) *>
+      CiConfiguration.setUp(new File(location).toPath) *>
         IO(ExitCode.Success)
     case DefineBuildJob(name, file) =>
       val defineBuild = for {
@@ -33,14 +34,18 @@ object Main extends CommandIOApp(
         _ = report(committedBuild)
       } yield ExitCode.Success
 
-      defineBuild.handleErrorWith(_ => IO(ExitCode.Error)) *> IO(ExitCode.Success)
+      defineBuild
 
     case RunBuild(name, environment) =>
       CiTracker.create(Git.open(new File(".")))
         .apply(BuildLatestCommit(name, environment))
-        .flatMap(report(_))
-        .handleErrorWith(t => IO(t.printStackTrace()) *> IO(ExitCode.Error)) *> IO(ExitCode.Success)
+        .flatMap(report) *> IO(ExitCode.Success)
 
+
+    case DisplayLogs =>
+      CiTracker.create(Git.open(new File(".")))
+        .apply(MetaQuery.LatestLogs())
+        .flatMap(report) *> IO(ExitCode.Success)
   }
 
   private def readFromStdin[A](andThen: LazyList[String] => IO[A]): IO[A] =
@@ -70,6 +75,7 @@ object  BalconyOpts {
   case class Setup(location: String)
   case class DefineBuildJob(name: String, file: Option[String])
   case class RunBuild(name: String, environment: Environment)
+  case object DisplayLogs
 
   val setupCommand = Opts.subcommand("init", "Initialise balcony for this git repository") {
     Opts.argument[String]("location").withDefault(".")
@@ -90,5 +96,7 @@ object  BalconyOpts {
         .map(Environment)
     ).mapN(RunBuild)
   }
+
+  val logBuild = Opts.subcommand("logs", "Display the logs from the latest build").map(_ => DisplayLogs)
 
 }
