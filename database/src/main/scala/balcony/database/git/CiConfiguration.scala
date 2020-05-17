@@ -106,6 +106,9 @@ object CiConfiguration {
     )
   }
 
+  private[git] def openCiTracker(git: Git): Resource[IO, String] =
+    openCiTracker(false, false)(git)
+
   private[git] def absoluteFilePath(location: String)(git: Git): Path =
     new File(s"${git.getRepository.getDirectory.getParentFile}/$location").toPath
 }

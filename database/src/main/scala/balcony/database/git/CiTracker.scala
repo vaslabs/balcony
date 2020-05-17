@@ -39,19 +39,19 @@ class CiTracker private(git: Git) {
     envBuild <- BuildProcess.build(
       codeCommit,
       buildScript,
-      _ => commitLog,
+      _ => CiConfiguration.openCiTracker(git).use(_ => commitLog),
       IO.pure(NoOutput)
     )
     _ <- persist(buildScript, envBuild)
   } yield envBuild
 
   def apply(query: CiTracker.Query): IO[EnvironmentBuild] =
-    CiConfiguration.openCiTracker(false, false)(git).use(_ => readLatest())
+    CiConfiguration.openCiTracker(git).use(_ => readLatest())
 
   def apply(metaQuery: CiTracker.MetaQuery[List[String]]): IO[MetaData[List[String]]] =
     metaQuery match {
       case LatestLogs() =>
-        CiConfiguration.openCiTracker(false, false)(git) use (_ => readLatestLogs())
+        CiConfiguration.openCiTracker(git) use (_ => readLatestLogs())
     }
 
   private def commitLog(): IO[Hash] = IO {
@@ -83,7 +83,7 @@ class CiTracker private(git: Git) {
     } yield MetaData(content)
 
   private def persist(buildScript: BuildScript, build: EnvironmentBuild): IO[Unit] =
-    CiConfiguration.openCiTracker(false, false)(git).use(_ =>
+    CiConfiguration.openCiTracker(git).use(_ =>
       IO(Files.copy(
         logFile(buildScript, build),
         CiConfiguration.absoluteFilePath(build.build.codeCommit.show)(git),
