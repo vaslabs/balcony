@@ -41,6 +41,6 @@ lazy val rpmSettings = Seq(
   packageSummary in Rpm := "Portable CI/CD solution",
   packageDescription in Rpm := "Control CI/CD within your project's source code under GIT",
   maintainerScripts in Rpm := Map.empty,
-  rpmLicense := Some("Apache License 2.0")
-
+  rpmLicense := Some("Apache License 2.0"),
+  maintainer := "vaslabs.io"
 )
