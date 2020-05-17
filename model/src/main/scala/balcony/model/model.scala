@@ -31,6 +31,7 @@ case class Hash(value: String) {
 }
 
 case class BuildScript(
+  repoLocation: String,
   location: String,
   name: String,
   reference: Hash,

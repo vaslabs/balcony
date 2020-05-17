@@ -110,7 +110,7 @@ class CiTracker private(git: Git) {
     val location = s".builds/$buildName"
     val buildRef = git.log().addPath(location).call().asScala.headOption
     buildRef.map(buildRef =>
-      BuildScript(location, buildName, Hash(buildRef.toObjectId.name()), environment)
+      BuildScript(repoLocation.getAbsolutePath, location, buildName, Hash(buildRef.toObjectId.name()), environment)
     )
   }
 }

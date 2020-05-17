@@ -18,6 +18,7 @@ object BuildProcess {
     summariseOutput: IO[BuildOutput]
   ): IO[EnvironmentBuild] = {
     val buildIO = processExecute(
+      buildScript.repoLocation,
       buildScript.location,
       buildScript.name,
       codeCommit,
@@ -29,12 +30,12 @@ object BuildProcess {
     } yield EnvironmentBuild(build, buildOutput, buildScript.environment, buildScript.reference)
   }
 
-  private def processExecute(buildLocation: String, buildFile: String, codeCommit: CodeCommit, commitBuild: Path => IO[Hash]): IO[Build] = {
+  private def processExecute(repoLocation: String, buildLocation: String, buildFile: String, codeCommit: CodeCommit, commitBuild: Path => IO[Hash]): IO[Build] = {
     for {
       out <- IO.delay(outputStream(codeCommit, buildLocation))
       path = out._1
       outputStream = out._2
-      process = Process.apply(s"./$buildFile", Some(new File(buildLocation))) #> outputStream #> System.out
+      process = Process.apply(s"/$buildLocation/$buildFile", Some(new File(repoLocation))) #> outputStream #> System.out
       exitValue <- IO.delay(process.run(false).exitValue())
       buildCommit <- commitBuild(path)
     } yield Build(codeCommit, buildCommit, parseOutcome(exitValue))

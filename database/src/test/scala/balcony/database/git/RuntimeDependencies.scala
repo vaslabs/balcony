@@ -63,8 +63,15 @@ object RuntimeDependencies {
     name <- Gen.nonEmptyListOf(Gen.alphaNumChar).map(_.mkString)
     reference <- Gen.alphaNumStr.map(Hash.apply)
     environment <- Gen.alphaNumStr.map(Environment.apply)
+    buildLocation = IO(Files.createTempDirectory("balcony-build-")).unsafeRunSync().toFile.getAbsolutePath
     _ = generateBuildFile(git, name, List("hello")).unsafeRunSync()
-  } yield BuildScript(s".builds/$name", name, reference, environment)
+  } yield BuildScript(
+    git.getRepository.getDirectory.getParentFile.getAbsolutePath,
+    buildLocation,
+    name,
+    reference,
+    environment
+  )
 
   implicit final class RuntimeDependenciesOps(val gen: Gen[RuntimeDependencies]) extends AnyVal {
     def withBuildScript: Gen[RuntimeDependencies] = for {
@@ -81,7 +88,8 @@ object RuntimeDependencies {
       messages
     ).unsafeRunSync()
     BuildScript(
-      s".builds/${runtimeDependencies.buildScript.name}",
+      runtimeDependencies.git.getRepository.getDirectory.getParentFile.getAbsolutePath,
+      runtimeDependencies.buildScript.location,
       runtimeDependencies.buildScript.name,
       buildHash,
       runtimeDependencies.buildScript.environment
