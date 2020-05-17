@@ -33,7 +33,6 @@ lazy val commonSettings = Seq(
   scalaVersion in ThisBuild := "2.13.2"
 )
 
-
 lazy val rpmSettings = Seq(
   rpmVendor := "vaslabs.io",
   version in Rpm := version.value,
