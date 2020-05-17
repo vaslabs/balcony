@@ -12,15 +12,16 @@ import scala.sys.process.Process
 object BuildProcess {
 
   def build(
-    repoLocation: String,
     codeCommit: CodeCommit,
     buildScript: BuildScript,
     commitBuild: Path => IO[Hash],
     summariseOutput: IO[BuildOutput]
   ): IO[EnvironmentBuild] = {
     val buildIO = processExecute(
-      repoLocation,
-      buildScript.location, codeCommit, commitBuild
+      buildScript.location,
+      buildScript.name,
+      codeCommit,
+      commitBuild
     )
     for {
       build <- buildIO
@@ -28,12 +29,12 @@ object BuildProcess {
     } yield EnvironmentBuild(build, buildOutput, buildScript.environment, buildScript.reference)
   }
 
-  private def processExecute(repoLocation: String, buildFile: String, codeCommit: CodeCommit, commitBuild: Path => IO[Hash]): IO[Build] = {
+  private def processExecute(buildLocation: String, buildFile: String, codeCommit: CodeCommit, commitBuild: Path => IO[Hash]): IO[Build] = {
     for {
-      out <- IO.delay(outputStream(codeCommit, repoLocation))
+      out <- IO.delay(outputStream(codeCommit, buildLocation))
       path = out._1
       outputStream = out._2
-      process = Process.apply(s"./$buildFile", Some(new File(repoLocation))) #> outputStream #> System.out
+      process = Process.apply(s"./$buildFile", Some(new File(buildLocation))) #> outputStream #> System.out
       exitValue <- IO.delay(process.run(false).exitValue())
       buildCommit <- commitBuild(path)
     } yield Build(codeCommit, buildCommit, parseOutcome(exitValue))

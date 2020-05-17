@@ -1,7 +1,7 @@
 package balcony.database.git
 
 import java.io.File
-import java.nio.file.{Files, Path, StandardOpenOption}
+import java.nio.file.{Files, Path, StandardCopyOption, StandardOpenOption}
 import java.nio.ByteBuffer
 
 import balcony.database.git.CiTracker.MetaData
@@ -20,21 +20,29 @@ class CiTracker private(git: Git) {
 
   def apply(command: CiTracker.Command): IO[EnvironmentBuild] = for {
     codeCommit <- codeCommitIO
-    envBuild <-
+    buildScript <-
       CiConfiguration.openCiTracker(false, false)(git).use(_ =>
         findBuild(command.buildName, command.environment).flatMap(buildScript =>
-          IO.fromOption(buildScript)(new RuntimeException(s"Missing build ${command.buildName}")).flatMap(buildScript =>
-            BuildProcess.build(
-            repoLocation.getAbsolutePath,
-            codeCommit,
-            buildScript,
-            _ => commitLog,
-            IO.pure(NoOutput)
-          )
-        )
+          IO.fromOption(buildScript)(new RuntimeException(s"Missing build ${command.buildName}")).flatMap {buildScript =>
+            IO {
+              val tmpDir = Files.createTempDirectory("balcony-build-")
+              Files.copy(
+                CiConfiguration.absoluteFilePath(buildScript.location)(git),
+                new File(s"${tmpDir.toFile.getAbsolutePath}/${buildScript.name}").toPath,
+                StandardCopyOption.COPY_ATTRIBUTES
+              )
+              buildScript.copy(location = tmpDir.toFile.getAbsolutePath)
+            }
+          }
       )
     )
-    _ <- persist(envBuild)
+    envBuild <- BuildProcess.build(
+      codeCommit,
+      buildScript,
+      _ => commitLog,
+      IO.pure(NoOutput)
+    )
+    _ <- persist(buildScript, envBuild)
   } yield envBuild
 
   def apply(query: CiTracker.Query): IO[EnvironmentBuild] =
@@ -74,13 +82,20 @@ class CiTracker private(git: Git) {
       content <- IO(Files.readAllLines(file.toPath).asScala.toList)
     } yield MetaData(content)
 
-  private def persist(build: EnvironmentBuild): IO[Unit] =
+  private def persist(buildScript: BuildScript, build: EnvironmentBuild): IO[Unit] =
     CiConfiguration.openCiTracker(false, false)(git).use(_ =>
-      writeEnvironmentBuild(build) *> IO {
+      IO(Files.copy(
+        logFile(buildScript, build),
+        CiConfiguration.absoluteFilePath(build.build.codeCommit.show)(git),
+        StandardCopyOption.COPY_ATTRIBUTES)
+      ) *> writeEnvironmentBuild(build) *> IO {
         git.add().addFilepattern(".").call()
         git.commit().setMessage(s"Finished build ${build.toString}").call()
       } *> IO.unit
     )
+
+  private def logFile(buildScript: BuildScript, build: EnvironmentBuild): Path =
+    new File(s"${buildScript.location}/${build.build.codeCommit.show}").toPath
 
   private def writeEnvironmentBuild(build: EnvironmentBuild): IO[Unit] =
     IO {
